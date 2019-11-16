@@ -138,7 +138,7 @@ func (g grid) draw() {
 
 	// Draw the data cells.
 	g.ctx.Call("save")
-	g.ctx.Set("font", "15px serif")
+	g.ctx.Set("font", "15px arial")
 	for i := range g.data {
 		s := g.data[i]
 		fgColor := ""
@@ -354,21 +354,87 @@ func (g *grid) addData(row, col int, value string, cl *xlsx.Cell) {
 
 // External JavaScript function to add data to a grid.
 // args: "grid id", row, col.
-func AddData(this js.Value, inputs []js.Value) interface{} {
-	id := inputs[0].String()
-	row := inputs[1].Int()
-	col := inputs[2].Int()
-	value := inputs[3].String()
+func AddData(this js.Value, args[]js.Value) interface{} {
+	id := args[0].String()
+	row := args[1].Int()
+	col := args[2].Int()
+	value := args[3].String()
 	g := grids[id]
 	g.addData(row, col, value, nil)
 	g.draw()
 	return nil
 }
 
-// External JavaScript function to create a new grid.
-// args: JSON object(gridObj).
-func NewGrid(this js.Value, inputs []js.Value) interface{} {
-	obj := newGridObj(inputs[0])
+func NewDropPad(this js.Value, args[]js.Value) interface{} {
+	obj := newGridObj(args[0])
+
+	main := createElement("div")
+	js.Global().Get("document").Get("body").Call("appendChild", main)
+	style := main.Get("style")
+	style.Set("background-color", "gray")
+	style.Set("width", "800px")
+	style.Set("height", "50px")
+	style.Set("color", "white")
+	style.Set("font-family", "arial")
+	style.Set("font-size", "3em")
+	main.Set("align", "center")
+	main.Set("innerText", "Drop Spreadsheet File(s) Here")
+
+	drpCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println("drop added")
+		e := args[0]
+		e.Call("preventDefault")
+		dt := e.Get("dataTransfer")
+		files := dt.Get("files")
+		ln := files.Get("length").Int()
+		for i := 0; i < ln; i++ {
+			file := files.Index(i)
+			fr := js.Global().Get("FileReader").New()
+			fr.Set("onload", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				buffer := fr.Get("result")
+				bl := buffer.Get("byteLength").Int()
+				array := js.Global().Get("Uint8Array").New(buffer)
+				var test js.Func
+
+				// free the buffer
+				test.Value = buffer
+				test.Release()
+
+				bytes := make([]byte, bl)
+				js.CopyBytesToGo(bytes, array)
+				f, err := xlsx.OpenBinary(bytes)
+				if err != nil {
+					fmt.Println(err)
+					return nil
+				}
+				g := newGrid(obj)
+				for r, rw := range f.Sheets[0].Rows {
+					for c, cl := range rw.Cells {
+						g.addData(r, c, cl.Value, cl)
+					}
+				}
+				g.draw()
+				return nil
+
+			}))
+			fr.Call("readAsArrayBuffer", file)
+		}
+		return nil
+	})
+
+	drgCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		e := args[0]
+		e.Call("preventDefault")
+		return nil
+	})
+
+	main.Call("addEventListener", "drop", drpCb)
+	main.Call("addEventListener", "dragover", drgCb)
+
+	return nil
+}
+
+func newGrid(obj gridObj) *grid {
 	main := createElement("div")
 	js.Global().Get("document").Get("body").Call("appendChild", main)
 	ctx, vcnv := createView(obj.width, obj.height, main)
@@ -702,6 +768,14 @@ func NewGrid(this js.Value, inputs []js.Value) interface{} {
 	js.Global().Get("document").Call("addEventListener", "keydown", keyDownCb)
 	js.Global().Get("document").Call("addEventListener", "keyup", keyUpCb)
 
+	return &g
+}
+
+// External JavaScript function to create a new grid.
+// args: JSON object(gridObj).
+func NewGrid(this js.Value, args[]js.Value) interface{} {
+	obj := newGridObj(args[0])
+	g := newGrid(obj)
 	g.draw()
 	return nil
 }

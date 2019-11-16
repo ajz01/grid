@@ -28,10 +28,11 @@ license that can be found in the LICENSE file.
 
 		const go = new Go();
 		let mod, inst;
-		WebAssembly.instantiateStreaming(fetch("test.wasm"), go.importObject).then((result) => {
+		WebAssembly.instantiateStreaming(fetch("test.wasm.gz"), go.importObject).then((result) => {
 			mod = result.module;
 			inst = result.instance;
 			run()
+			addDropPad();
 		}).catch((err) => {
 			console.error(err);
 		});
@@ -48,17 +49,17 @@ license that can be found in the LICENSE file.
 
 		var gridCount = 0;
 
-		function addGrid() {
+		function addDropPad() {
 		  gridCount++;
 		  // send a list of objects to map names to styles.
 		  setCssMap({class: "grid", styles: ["background-color: red"]});
 		  // create component from object
-		  newGrid({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10})
-		  addData("grid" + gridCount, 3, 5, "add some text from javascript")
+		  newDropPad({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10})
+		  //addData("grid" + gridCount, 3, 5, "add some text from javascript")
 		}
 	</script>
-      <button onClick="addGrid();" id="grid">New Grid</button>
-      <button onClick="addGridData('grid' + gridCount);" id="grid">Add Data</button>
+      <!--button onClick="addDropPad();" id="grid">New Grid</button-->
+      <!--button onClick="addGridData('grid' + gridCount);" id="grid">Add Data</button-->
 </body>
 
 </html>

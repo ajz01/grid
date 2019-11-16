@@ -8,6 +8,7 @@ import (
 func main() {
 	c := make(chan bool)
 	js.Global().Set("newGrid", js.FuncOf(grid.NewGrid))
+	js.Global().Set("newDropPad", js.FuncOf(grid.NewDropPad))
 	js.Global().Set("setCssMap", js.FuncOf(grid.SetCssMap))
 	js.Global().Set("addData", js.FuncOf(grid.AddData))
 	<-c
