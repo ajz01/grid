@@ -39,6 +39,7 @@ type grid struct {
 	active         bool
 	mouseDown      bool
 	scrollAmt	int
+	lastScroll	int
 }
 
 type gridObj struct {
@@ -206,6 +207,7 @@ func (g *grid) move(dx, dy int) bool {
 		g.x = 0
 		g.sx = 0
 		g.direction = -1
+		g.scrolling = false
 		js.Global().Call("clearInterval", g.interval)
 		return false
 	}
@@ -213,6 +215,7 @@ func (g *grid) move(dx, dy int) bool {
 		g.y = 0
 		g.sy = 0
 		g.direction = -1
+		g.scrolling = false
 		js.Global().Call("clearInterval", g.interval)
 		return false
 	}
@@ -393,6 +396,7 @@ func NewGrid(this js.Value, inputs []js.Value) interface{} {
 	false,
 	false,
 	false,
+	0,
 	0}
 
 	grids[obj.id] = g
@@ -613,16 +617,28 @@ func NewGrid(this js.Value, inputs []js.Value) interface{} {
 
 	scrollCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if g.active && !g.scrolling {
-			fmt.Println("scroll")
-			g.scrollAmt = 50
+			g.scrolling = true
 			e := args[0]
 			e.Call("preventDefault")
-			if g.move(0, 5) {
-				g.scrolling = true
-				g.direction = 2
-				g.interval = js.Global().Call("setInterval", moveAmtCb, g.speed)
-			}
-			g.scrolling = true
+			js.Global().Get("window").Call("requestAnimationFrame", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				d := js.Global().Get("document")
+				body := d.Get("body")
+				el := d.Get("documentElement")
+				g.scrollAmt = 50
+				scroll := 5
+				if body.Get("scrollTop").Int() > g.lastScroll || el.Get("scrollTop").Int() > g.lastScroll {
+					fmt.Println("scroll down")
+					g.direction = 2
+				} else {
+					fmt.Println("scroll up")
+					g.direction = 3
+					scroll = -5
+				}
+				if g.move(0, scroll) {
+					g.interval = js.Global().Call("setInterval", moveAmtCb, g.speed)
+				}
+				return nil
+			}))
 		}
 		return nil
 	})
@@ -636,34 +652,6 @@ func NewGrid(this js.Value, inputs []js.Value) interface{} {
 		ln := files.Get("length").Int()
 		for i := 0; i < ln; i++ {
 			file := files.Index(i)
-			/*p := file.Call("arrayBuffer")
-			p.Call("then", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				buffer := args[0]
-				bl := buffer.Get("byteLength").Int()
-				array := js.Global().Get("Uint8Array").New(buffer)
-				var test js.Func
-
-				// free the buffer
-				test.Value = buffer
-				test.Release()
-
-				bytes := make([]byte, bl)
-				js.CopyBytesToGo(bytes, array)
-				f, err := xlsx.OpenBinary(bytes)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
-				for r, rw := range f.Sheets[0].Rows {
-					for c, cl := range rw.Cells {
-						fmt.Printf("cell: %v\n", cl.GetStyle())
-						fmt.Printf("bg: %s\n", cl.GetStyle().Fill.FgColor)
-						g.addData(r, c, cl.Value, cl)
-						g.draw()
-					}
-				}
-				return nil
-			}))*/
 			fr := js.Global().Get("FileReader").New()
 			fr.Set("onload", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				buffer := fr.Get("result")
@@ -684,12 +672,10 @@ func NewGrid(this js.Value, inputs []js.Value) interface{} {
 				}
 				for r, rw := range f.Sheets[0].Rows {
 					for c, cl := range rw.Cells {
-						fmt.Printf("cell: %v\n", cl.GetStyle())
-						fmt.Printf("bg: %s\n", cl.GetStyle().Fill.FgColor)
 						g.addData(r, c, cl.Value, cl)
-						g.draw()
 					}
 				}
+				g.draw()
 				return nil
 
 			}))
