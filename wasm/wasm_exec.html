@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+Copyright 2018 The Go Authors. All rights reserved.
+Use of this source code is governed by a BSD-style
+license that can be found in the LICENSE file.
+-->
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>Go wasm</title>
+</head>
+
+<body>
+	<!--
+	Add the following polyfill for Microsoft Edge 17/18 support:
+	<script src="https://cdn.jsdelivr.net/npm/text-encoding@0.7.0/lib/encoding.min.js"></script>
+	(see https://caniuse.com/#feat=textencoder)
+	-->
+	<script src="wasm_exec.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+		WebAssembly.instantiateStreaming(fetch("test.wasm"), go.importObject).then((result) => {
+			mod = result.module;
+			inst = result.instance;
+			run()
+		}).catch((err) => {
+			console.error(err);
+		});
+
+		async function run() {
+			console.clear();
+			await go.run(inst);
+			inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+		}
+
+		function addGridData(id) {
+		  addData(id, 5, 8, "add some text from javascript")
+		}
+
+		var gridCount = 0;
+
+		function addGrid() {
+		  gridCount++;
+		  // send a list of objects to map names to styles.
+		  setCssMap({class: "grid", styles: ["background-color: red"]});
+		  // create component from object
+		  newGrid({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10})
+		  addData("grid" + gridCount, 3, 5, "add some text from javascript")
+		}
+	</script>
+      <button onClick="addGrid();" id="grid">New Grid</button>
+      <button onClick="addGridData('grid' + gridCount);" id="grid">Add Data</button>
+</body>
+
+</html>
