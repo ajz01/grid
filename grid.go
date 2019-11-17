@@ -366,18 +366,21 @@ func AddData(this js.Value, args[]js.Value) interface{} {
 }
 
 func NewDropPad(this js.Value, args[]js.Value) interface{} {
-	obj := newGridObj(args[0])
+	obj := newGridObj(args[1])
 
 	main := createElement("div")
 	js.Global().Get("document").Get("body").Call("appendChild", main)
 	style := main.Get("style")
 	style.Set("background-color", "gray")
-	style.Set("width", "800px")
-	style.Set("height", "50px")
+	style.Set("width", args[0].Get("width").String())
+	style.Set("height", args[0].Get("height").String())
 	style.Set("color", "white")
 	style.Set("font-family", "arial")
 	style.Set("font-size", "3em")
-	main.Set("align", "center")
+	style.Set("margin", "0 auto")
+	style.Set("display", "flex")
+	style.Set("justify-content", "center")
+	style.Set("align-items", "center")
 	main.Set("innerText", "Drop Spreadsheet File(s) Here")
 
 	drpCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -419,6 +422,7 @@ func NewDropPad(this js.Value, args[]js.Value) interface{} {
 			}))
 			fr.Call("readAsArrayBuffer", file)
 		}
+		style.Set("display", "none")
 		return nil
 	})
 
@@ -663,6 +667,7 @@ func newGrid(obj gridObj) *grid {
 	mouseLeaveCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		js.Global().Call("clearInterval", g.interval)
 		g.direction = -1
+		g.scrolling = false
 		g.active = false
 		return nil
 	})
@@ -682,10 +687,10 @@ func newGrid(obj gridObj) *grid {
 	})
 
 	scrollCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		e := args[0]
+		e.Call("preventDefault")
 		if g.active && !g.scrolling {
 			g.scrolling = true
-			e := args[0]
-			e.Call("preventDefault")
 			js.Global().Get("window").Call("requestAnimationFrame", js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 				d := js.Global().Get("document")
 				body := d.Get("body")
