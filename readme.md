@@ -1,6 +1,8 @@
 # grid
 
-A wasm based grid control built with go version >= 1.13.
+A wasm based grid control built with go.
+
+Note: requires go version 1.13 > for syscall/js CopyBytesToGo function.
 
 The repository contains a test server that will serve
 
