@@ -54,11 +54,12 @@ license that can be found in the LICENSE file.
 		  // send a list of objects to map names to styles.
 		  setCssMap({class: "grid", styles: ["background-color: red"]});
 		  // create component from object
-			newGrid({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10})
+			var main = newGrid({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10});
+      document.getElementById("mainDiv").appendChild(main);
 		  //addData("grid" + gridCount, 3, 5, "add some text from javascript")
 		}
 	</script>
-	<div style="background-color:gray; width:98vw; height:100px; margin:0px auto; display:flex">
+	<div id="mainDiv" style="background-color:gray; width:98vw; height:100vh; margin:0px auto; display:flex">
 		<img src="logo.svg" width="300px" height="100px" style="display:block"/>
 	</div>
 </body>

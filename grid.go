@@ -12,6 +12,7 @@ type Cell struct {
 	Col         int
 	Value       string
 	Editing     bool
+	Grid	*grid
 }
 
 type Address struct {
@@ -43,31 +44,26 @@ type grid struct {
 
 type Grid interface {
 	Draw()
-	AddData(row, col int, value string)
 	AddEventHandler(event string, handler func(this js.Value, args []js.Value) interface{})
-	GetCtx() js.Value
+	GetCtx() *js.Value
 	GetCellWidth() int
 	GetCellHeight() int
 	GetX() int
 	GetY() int
 	GetEditCellAddress() *Address
 	AddContainer(container Container)
-}
-
-type Drawer interface {
-	Draw()
+	GetElement() js.Value
+	AddData(row, col int, value string)
 }
 
 type Container interface {
-	Drawer
 	AddCell(cell *Cell)
+	SetCellStyles(row, col int)
+	SetCellFontStyles(row, col int)
 }
 
 func (g *grid) Draw() {
 	g.draw()
-	if g.container != nil {
-		g.container.Draw()
-	}
 }
 
 func (g *grid) AddData(row, col int, value string) {
@@ -78,8 +74,8 @@ func (g *grid) AddEventHandler(event string, handler func(this js.Value, args []
 	g.vcnv.Call("addEventListener", event, js.FuncOf(handler))
 }
 
-func (g grid) GetCtx() js.Value {
-	return g.ctx
+func (g grid) GetCtx() *js.Value {
+	return &g.ctx
 }
 
 func (g grid) GetCellWidth() int {
@@ -107,6 +103,10 @@ func (g grid) GetEditCellAddress() *Address {
 
 func (g *grid) AddContainer(container Container) {
 	g.container = container
+}
+
+func (g grid) GetElement() js.Value {
+	return g.main
 }
 
 type GridObj struct {
@@ -166,6 +166,39 @@ func createBackGround(width, height, cellWidth, cellHeight int) js.Value {
 	return cnv
 }
 
+func (c *Cell) draw() {
+	// Set default cell styles.
+	c.Grid.ctx.Set("font", "15px arial")
+	fgColor := "white"
+	c.Grid.ctx.Set("fillStyle", fgColor)
+	// Notify the container so any custom cell styles can be applied to the
+	// canvas ctx.
+	if c.Grid.container != nil {
+		c.Grid.container.SetCellStyles(c.Row, c.Col)
+	}
+	fgColor = c.Grid.ctx.Get("fillStyle").String()
+	// If the background is white no need to fill the rect.
+	if fgColor != "#ffffff" {
+		c.Grid.ctx.Call("fillRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
+	}
+	str := c.Value
+	if c != c.Grid.editCell {
+		for width := c.Grid.cellWidth + 1; width > c.Grid.cellWidth; {
+			tm := c.Grid.ctx.Call("measureText", str)
+			width = tm.Get("width").Int()
+			if width > c.Grid.cellWidth {
+				str = str[:len(str)-1]
+			}
+		}
+	}
+	fontColor := "black"
+	c.Grid.ctx.Set("fillStyle", fontColor)
+	if c.Grid.container != nil {
+		c.Grid.container.SetCellFontStyles(c.Row, c.Col)
+	}
+	c.Grid.ctx.Call("fillText", str, c.X-c.Grid.x, c.Y-c.Grid.y+15)
+}
+
 // Draw the grid foreground objects.
 func (g grid) draw() {
 	w := g.width
@@ -186,8 +219,6 @@ func (g grid) draw() {
 			shadowColor = "green"
 			borderColor = "lightgreen"
 		}
-		g.ctx.Set("fillStyle", "white")
-		g.ctx.Call("fillRect", s.X-g.x, s.Y-g.y, g.cellWidth, g.cellHeight)
 		g.ctx.Set("shadowColor", shadowColor)
 		g.ctx.Set("strokeStyle", borderColor)
 		g.ctx.Set("shadowBlur", 2)
@@ -197,41 +228,18 @@ func (g grid) draw() {
 	g.ctx.Call("restore")
 
 	g.ctx.Call("save")
-	// If there's no container drawing the data
-	// use the default data cell behavior.
-	if (g.container == nil) {
-		// Draw the data cells.
-		g.ctx.Set("font", "15px arial")
-		for i := range g.data {
-			s := g.data[i]
-			fgColor := "white"
-			fontColor := "black"
-			g.ctx.Set("fillStyle", fgColor)
-			g.ctx.Call("fillRect", s.X-g.x, s.Y-g.y, g.cellWidth, g.cellHeight)
-			str := s.Value
-			if s != g.editCell {
-				for width := g.cellWidth + 1; width > g.cellWidth; {
-					tm := g.ctx.Call("measureText", str)
-					width = tm.Get("width").Int()
-					if width > g.cellWidth {
-						str = str[:len(str)-1]
-					}
-				}
-			}
-			g.ctx.Set("fillStyle", fontColor)
-			g.ctx.Call("fillText", str, s.X-g.x, s.Y-g.y+15)
+	// Draw the data cells.
+	for i := range g.data {
+		// Edit cell may or may not be added to data cells yet.
+		// Don't double draw.
+		if g.data[i] != g.editCell {
+			g.data[i].draw()
 		}
-	} else if g.editCell != nil {
-			g.ctx.Set("font", "15px arial")
-			s := g.editCell
-			fgColor := "white"
-			fontColor := "black"
-			g.ctx.Set("fillStyle", fgColor)
-			g.ctx.Call("fillRect", s.X-g.x, s.Y-g.y, g.cellWidth, g.cellHeight)
-			str := s.Value
-			g.ctx.Set("fillStyle", fontColor)
-			g.ctx.Call("fillText", str, s.X-g.x, s.Y-g.y+15)
+	}
 
+	// Draw the edit cell.
+	if g.editCell != nil {
+		g.editCell.draw()
 	}
 	g.ctx.Call("restore")
 
@@ -376,7 +384,7 @@ func (g *grid) selectCell(x, y int) *Cell {
 	if s, ok := g.selectedCells[a]; ok {
 		return s
 	}
-	s := Cell{sx, sy, a.Row, a.Col, "", false}//, nil}
+	s := Cell{sx, sy, a.Row, a.Col, "", false, g}//, nil}
 	g.selectedCells[a] = &s
 	return &s
 }
@@ -401,25 +409,29 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 	x := col * g.cellWidth
 	y := row * g.cellHeight
 
-	x += g.x
-	y += g.y
+	/*x += g.x
+	y += g.y*/
 
 	return x, y
 }
 
 // Add a value to the cell at the Address of row and col of the grid.
-func (g *grid) addData(row, col int, value string) { //, cl *xlsx.Cell) {
+func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
 	if c, ok := g.data[Address{row, col}]; ok {
 		c.Value = value
-		return
+		if g.container != nil {
+			g.container.AddCell(c)
+		}
+		return c
 	}
 	x, y := g.addressToCoords(row, col)
-	c := Cell{x, y, row, col, value, false}
+	c := Cell{x, y, row, col, value, false, g}
 	g.data[Address{row, col}] = &c
 	if g.container != nil {
 		fmt.Println("adding cell")
 		g.container.AddCell(&c)
 	}
+	return &c
 }
 
 // External JavaScript function to add data to a grid.
@@ -437,7 +449,7 @@ func AddData(this js.Value, args[]js.Value) interface{} {
 
 func NewGrid(obj GridObj) Grid {
 	main := CreateElement("div")
-	js.Global().Get("document").Get("body").Call("appendChild", main)
+	//js.Global().Get("document").Get("body").Call("appendChild", main)
 	ctx, vcnv := createView(obj.width, obj.height, main)
 	applyCss(vcnv, obj.class)
 	cnv := createBackGround(obj.width, obj.height, obj.cellWidth, obj.cellHeight)
@@ -623,13 +635,13 @@ func NewGrid(obj GridObj) Grid {
 		if g.editCell != nil {
 			e.Call("preventDefault")
 			ec := g.editCell
-			if _, ok := g.data[Address{ec.Row, ec.Col}]; !ok {
-				g.addData(ec.Row, ec.Col, ec.Value)
-			}
+			/*if _, ok := g.data[Address{ec.Row, ec.Col}]; !ok {
+				g.AddData(ec.Row, ec.Col, ec.Value)
+			}*/
 			if c == "Tab" {
-				ec.Editing = false
 				delete(g.selectedCells, Address{ec.Row, ec.Col})
-				g.addData(ec.Row, ec.Col, ec.Value)
+				g.AddData(ec.Row, ec.Col, ec.Value)
+				ec.Editing = false
 				g.editCell = nil
 			} else if c == "Backspace" {
 				if len(g.editCell.Value) > 0 {
@@ -731,5 +743,5 @@ func NewGridJs(this js.Value, args[]js.Value) interface{} {
 	obj := NewGridObj(args[0])
 	g := NewGrid(obj)
 	g.Draw()
-	return nil
+	return g.GetElement()
 }
