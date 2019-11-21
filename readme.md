@@ -13,3 +13,5 @@ GOOS=js GOARCH=wasm go build -o test.wasm
 gzip -f test.wasm
 
 Then change to the server directory and execute ./server which will listen on the localhost port 8080 by default.
+
+Navigate to the modified go provided wasm_exec.html to view the grid from a browser.
