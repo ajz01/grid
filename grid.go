@@ -180,6 +180,8 @@ func (c *Cell) draw() {
 	// If the background is white no need to fill the rect.
 	if fgColor != "#ffffff" {
 		c.Grid.ctx.Call("fillRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
+		c.Grid.ctx.Set("strokeStyle", "lightgray")
+		c.Grid.ctx.Call("strokeRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
 	}
 	str := c.Value
 	if c != c.Grid.editCell {
