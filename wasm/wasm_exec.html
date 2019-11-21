@@ -56,11 +56,10 @@ license that can be found in the LICENSE file.
 		  // create component from object
 			var main = newGrid({id: "grid" + gridCount, class: "grid", width: 800, height: 500, cellWidth:80, cellHeight:25, "scroll-speed":10});
       document.getElementById("mainDiv").appendChild(main);
-		  //addData("grid" + gridCount, 3, 5, "add some text from javascript")
+		  addData("grid" + gridCount, 3, 5, "add some text from javascript")
 		}
 	</script>
-	<div id="mainDiv" style="background-color:gray; width:98vw; height:100vh; margin:0px auto; display:flex">
-		<img src="logo.svg" width="300px" height="100px" style="display:block"/>
+	<div id="mainDiv" style="background-color:gray; width:98vw; height:100vh; margin:0px auto; display:flex; justify-content: center; align-items: center">
 	</div>
 </body>
 

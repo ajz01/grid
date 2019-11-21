@@ -5,6 +5,7 @@ import (
 	"syscall/js"
 )
 
+// A cell of the grid.
 type Cell struct {
 	X           int
 	Y           int
@@ -15,11 +16,13 @@ type Cell struct {
 	Grid	*grid
 }
 
+// The address of a cell.
 type Address struct {
 	Row int
 	Col int
 }
 
+// The main grid type.
 type grid struct {
 	class          string
 	x, y, sx, sy   int
@@ -42,6 +45,7 @@ type grid struct {
 	container Container
 }
 
+// The public interface for a grid.
 type Grid interface {
 	Draw()
 	AddEventHandler(event string, handler func(this js.Value, args []js.Value) interface{})
@@ -56,6 +60,10 @@ type Grid interface {
 	AddData(row, col int, value string)
 }
 
+// The Container interface provides the methods for the grid.container.
+// The grid.container allows for adding event handlers and cell styles
+// to the grid while letting the grid handle the standard events and
+// cell styles.
 type Container interface {
 	AddCell(cell *Cell)
 	SetCellStyles(row, col int)
@@ -109,6 +117,9 @@ func (g grid) GetElement() js.Value {
 	return g.main
 }
 
+// A type representing the javaScript
+// object that is passed to NewGrid
+// to specify the grid settings.
 type GridObj struct {
 	id         string
 	class      string
@@ -143,6 +154,7 @@ func (g grid) getLocation(x, y int) (int, int) {
 }
 
 // Create the canvas that will be used as the background.
+// TODO: consider making the strokeStyle border color a setting.
 func createBackGround(width, height, cellWidth, cellHeight int) js.Value {
 	cnv := CreateElement("canvas")
 	cnv.Set("width", width*2)
@@ -166,13 +178,18 @@ func createBackGround(width, height, cellWidth, cellHeight int) js.Value {
 	return cnv
 }
 
+// Draw an individual grid cell. If there is a container allow it to set
+// the cell and font styles.
+// TODO: Consider making the fgColor and fontColor fields of the grid
+// struct so that there can be a single call to the container.SetCellStyles
+// that sets both for the grid.
 func (c *Cell) draw() {
 	// Set default cell styles.
 	c.Grid.ctx.Set("font", "15px arial")
 	fgColor := "white"
 	c.Grid.ctx.Set("fillStyle", fgColor)
-	// Notify the container so any custom cell styles can be applied to the
-	// canvas ctx.
+	// Notify the container that the cell is being drawn so any custom 
+	// cell styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
 		c.Grid.container.SetCellStyles(c.Row, c.Col)
 	}
@@ -180,6 +197,8 @@ func (c *Cell) draw() {
 	// If the background is white no need to fill the rect.
 	if fgColor != "#ffffff" {
 		c.Grid.ctx.Call("fillRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
+		// TODO: the default grid borders are lightgray consider making a setting and apply
+		// the strokeStyle setting at the createBackGround call.
 		c.Grid.ctx.Set("strokeStyle", "lightgray")
 		c.Grid.ctx.Call("strokeRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
 	}
@@ -195,6 +214,8 @@ func (c *Cell) draw() {
 	}
 	fontColor := "black"
 	c.Grid.ctx.Set("fillStyle", fontColor)
+	// Notify the container that the cell is being drawn so any custom 
+	// font styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
 		c.Grid.container.SetCellFontStyles(c.Row, c.Col)
 	}
