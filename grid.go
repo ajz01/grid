@@ -134,7 +134,7 @@ type GridObj struct {
 var css = map[string][]string{}
 
 // Store grids for access from javascript.
-var grids = map[string]grid{}
+var grids = map[string]*grid{}
 
 // Apply the css styles stored in css.
 func applyCss(el js.Value, class string) {
@@ -502,7 +502,7 @@ func NewGrid(obj GridObj) Grid {
 	0,
 	nil}
 
-	grids[obj.id] = g
+	grids[obj.id] = &g
 
 	// Interval callback to handle scrolling while mouse button is down.
 	moveCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
