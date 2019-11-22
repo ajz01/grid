@@ -35,7 +35,7 @@ type grid struct {
 	cellHeight     int
 	direction      int
 	interval       js.Value
-	speed          int
+	speed          int // scroll speed.
 	editCell       *Cell
 	scrolling      bool
 	active         bool
@@ -216,15 +216,18 @@ func (c *Cell) draw() {
 	c.Grid.ctx.Set("font", "15px arial")
 	fgColor := "white"
 	c.Grid.ctx.Set("fillStyle", fgColor)
+
 	// Notify the container that the cell is being drawn so any custom 
 	// cell styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
 		c.Grid.container.SetCellStyles(c.Row, c.Col)
 	}
 	fgColor = c.Grid.ctx.Get("fillStyle").String()
+
 	// If the background is white no need to fill the rect.
 	if fgColor != "#ffffff" {
 		c.Grid.ctx.Call("fillRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
+
 		// TODO: the default grid borders are lightgray consider making a setting and apply
 		// the strokeStyle setting at the createBackGround call.
 		c.Grid.ctx.Set("strokeStyle", "lightgray")
@@ -242,6 +245,7 @@ func (c *Cell) draw() {
 	}
 	fontColor := "black"
 	c.Grid.ctx.Set("fillStyle", fontColor)
+
 	// Notify the container that the cell is being drawn so any custom 
 	// font styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
@@ -258,8 +262,9 @@ func (g grid) draw() {
 	// Clip background canvas.
 	g.ctx.Call("drawImage", g.cnv, g.sx, g.sy, w, h, 0, 0, w, h)
 
-	g.ctx.Call("save")
+
 	// Draw the data cells.
+	g.ctx.Call("save")
 	for i := range g.data {
 		// Edit cell may or may not be added to data cells yet.
 		// Don't double draw.
@@ -278,7 +283,6 @@ func (g grid) draw() {
 	g.ctx.Call("save")
 	g.ctx.Set("lineWidth", 1)
 	for i := range g.selectedCells {
-		g.ctx.Call("save")
 		s := g.selectedCells[i]
 		shadowColor := "blue"
 		borderColor := "lightblue"
@@ -290,7 +294,6 @@ func (g grid) draw() {
 		g.ctx.Set("strokeStyle", borderColor)
 		g.ctx.Set("shadowBlur", 2)
 		g.ctx.Call("strokeRect", s.X-g.x+2, s.Y-g.y+2, g.cellWidth-2, g.cellHeight-2)
-		g.ctx.Call("restore")
 	}
 	g.ctx.Call("restore")
 
@@ -327,7 +330,7 @@ func createView(width, height int, main js.Value) (js.Value, js.Value) {
 
 // Move the grid's viewport.
 func (g *grid) move(dx, dy int) bool {
-	// left and top edges.
+	// Attempting to move outside left and top boundaries.
 	if dx < 0 && g.x+dx < 0 {
 		g.x = 0
 		g.sx = 0
@@ -391,6 +394,7 @@ func NewGridObj(obj js.Value) GridObj {
 	return g
 }
 
+// Helper for getting bounding client rect.
 func getBounds(cnv js.Value) (int, int) {
 	bounds := cnv.Call("getBoundingClientRect")
 	x := bounds.Get("left").Int()
@@ -398,6 +402,7 @@ func getBounds(cnv js.Value) (int, int) {
 	return x, y
 }
 
+// Helper for getting window scroll values.
 func getScrollCoords() (int, int) {
 	x := js.Global().Get("window").Get("scrollX").Int()
 	y := js.Global().Get("window").Get("scrollY").Int()
@@ -460,9 +465,6 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 	x := col * g.cellWidth
 	y := row * g.cellHeight
 
-	/*x += g.x
-	y += g.y*/
-
 	return x, y
 }
 
@@ -498,8 +500,8 @@ func AddData(this js.Value, args[]js.Value) interface{} {
 }
 
 func NewGrid(obj GridObj) Grid {
+	// Create a div to add the grid to.
 	main := CreateElement("div")
-	//js.Global().Get("document").Get("body").Call("appendChild", main)
 	ctx, vcnv := createView(obj.width, obj.height, main)
 	applyCss(vcnv, obj.class)
 	cnv := createBackGround(obj.width, obj.height, obj.cellWidth, obj.cellHeight)
@@ -531,7 +533,7 @@ func NewGrid(obj GridObj) Grid {
 
 	grids[obj.id] = &g
 
-	// Interval callback to handle scrolling while mouse button is down.
+	// Interval callback to handle continued scrolling while mouse button is down.
 	moveCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		switch g.direction {
 		case 0:
@@ -548,7 +550,7 @@ func NewGrid(obj GridObj) Grid {
 		return nil
 	})
 
-	// Interval callback to handle scrolling from scroll event.
+	// Interval callback to handle continued scrolling from scroll event.
 	moveAmtCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		switch g.direction {
 		case 0:
@@ -685,9 +687,6 @@ func NewGrid(obj GridObj) Grid {
 		if g.editCell != nil {
 			e.Call("preventDefault")
 			ec := g.editCell
-			/*if _, ok := g.data[Address{ec.Row, ec.Col}]; !ok {
-				g.AddData(ec.Row, ec.Col, ec.Value)
-			}*/
 			if c == "Tab" {
 				delete(g.selectedCells, Address{ec.Row, ec.Col})
 				g.AddData(ec.Row, ec.Col, ec.Value)

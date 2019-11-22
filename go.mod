@@ -1,3 +1,3 @@
 module github.com/ajz01/grid
 
-go 1.12
+go 1.13
