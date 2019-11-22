@@ -58,6 +58,7 @@ type Grid interface {
 	AddContainer(container Container)
 	GetElement() js.Value
 	AddData(row, col int, value string)
+	GetContainer() Container
 }
 
 // The Container interface provides the methods for the grid.container.
@@ -65,9 +66,32 @@ type Grid interface {
 // to the grid while letting the grid handle the standard events and
 // cell styles.
 type Container interface {
-	AddCell(cell *Cell)
+	AddCell(cell CellContent)
 	SetCellStyles(row, col int)
 	SetCellFontStyles(row, col int)
+}
+
+type CellContent interface {
+	GetRow() int
+	GetCol() int
+	GetValue() string
+	SetValue(v string)
+}
+
+func (c Cell) GetRow() int {
+	return c.Row
+}
+
+func (c Cell) GetCol() int {
+	return c.Col
+}
+
+func (c Cell) GetValue() string {
+	return c.Value
+}
+
+func (c *Cell) SetValue(v string) {
+	c.Value = v
 }
 
 func (g *grid) Draw() {
@@ -111,6 +135,10 @@ func (g grid) GetEditCellAddress() *Address {
 
 func (g *grid) AddContainer(container Container) {
 	g.container = container
+}
+
+func (g grid) GetContainer() Container {
+	return g.container
 }
 
 func (g grid) GetElement() js.Value {
