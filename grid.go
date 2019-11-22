@@ -1,7 +1,7 @@
 package grid
 
 import (
-	"fmt"
+	_"fmt"
 	"syscall/js"
 )
 
@@ -479,7 +479,6 @@ func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
 	c := Cell{x, y, row, col, value, false, g}
 	g.data[Address{row, col}] = &c
 	if g.container != nil {
-		fmt.Println("adding cell")
 		g.container.AddCell(&c)
 	}
 	return &c
@@ -759,10 +758,8 @@ func NewGrid(obj GridObj) Grid {
 				g.scrollAmt = 50
 				scroll := 5
 				if body.Get("scrollTop").Int() > g.lastScroll || el.Get("scrollTop").Int() > g.lastScroll {
-					fmt.Println("scroll down")
 					g.direction = 2
 				} else {
-					fmt.Println("scroll up")
 					g.direction = 3
 					scroll = -5
 				}
