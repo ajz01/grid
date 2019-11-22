@@ -262,7 +262,6 @@ func (g grid) draw() {
 	// Clip background canvas.
 	g.ctx.Call("drawImage", g.cnv, g.sx, g.sy, w, h, 0, 0, w, h)
 
-
 	// Draw the data cells.
 	g.ctx.Call("save")
 	for i := range g.data {
