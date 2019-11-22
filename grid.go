@@ -230,6 +230,22 @@ func (g grid) draw() {
 	// Clip background canvas.
 	g.ctx.Call("drawImage", g.cnv, g.sx, g.sy, w, h, 0, 0, w, h)
 
+	g.ctx.Call("save")
+	// Draw the data cells.
+	for i := range g.data {
+		// Edit cell may or may not be added to data cells yet.
+		// Don't double draw.
+		if g.data[i] != g.editCell {
+			g.data[i].draw()
+		}
+	}
+
+	// Draw the edit cell.
+	if g.editCell != nil {
+		g.editCell.draw()
+	}
+	g.ctx.Call("restore")
+
 	// Draw the selected cells.
 	g.ctx.Call("save")
 	g.ctx.Set("lineWidth", 1)
@@ -247,22 +263,6 @@ func (g grid) draw() {
 		g.ctx.Set("shadowBlur", 2)
 		g.ctx.Call("strokeRect", s.X-g.x+2, s.Y-g.y+2, g.cellWidth-2, g.cellHeight-2)
 		g.ctx.Call("restore")
-	}
-	g.ctx.Call("restore")
-
-	g.ctx.Call("save")
-	// Draw the data cells.
-	for i := range g.data {
-		// Edit cell may or may not be added to data cells yet.
-		// Don't double draw.
-		if g.data[i] != g.editCell {
-			g.data[i].draw()
-		}
-	}
-
-	// Draw the edit cell.
-	if g.editCell != nil {
-		g.editCell.draw()
 	}
 	g.ctx.Call("restore")
 
