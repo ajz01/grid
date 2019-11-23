@@ -1,26 +1,8 @@
 package grid
 
 import (
-	_"fmt"
 	"syscall/js"
 )
-
-// A cell of the grid.
-type Cell struct {
-	X           int
-	Y           int
-	Row         int
-	Col         int
-	Value       string
-	Editing     bool
-	Grid	*grid
-}
-
-// The address of a cell.
-type Address struct {
-	Row int
-	Col int
-}
 
 // The main grid type.
 type grid struct {
@@ -69,29 +51,7 @@ type Container interface {
 	AddCell(cell CellContent)
 	SetCellStyles(row, col int)
 	SetCellFontStyles(row, col int)
-}
-
-type CellContent interface {
-	GetRow() int
-	GetCol() int
-	GetValue() string
-	SetValue(v string)
-}
-
-func (c Cell) GetRow() int {
-	return c.Row
-}
-
-func (c Cell) GetCol() int {
-	return c.Col
-}
-
-func (c Cell) GetValue() string {
-	return c.Value
-}
-
-func (c *Cell) SetValue(v string) {
-	c.Value = v
+	GetGrid() Grid
 }
 
 func (g *grid) Draw() {
@@ -145,113 +105,11 @@ func (g grid) GetElement() js.Value {
 	return g.main
 }
 
-// A type representing the javaScript
-// object that is passed to NewGrid
-// to specify the grid settings.
-type GridObj struct {
-	id         string
-	class      string
-	width      int
-	height     int
-	cellWidth  int
-	cellHeight int
-	speed      int
-}
-
-// Class to style list.
-var css = map[string][]string{}
-
-// Store grids for access from javascript.
-var grids = map[string]*grid{}
-
-// Apply the css styles stored in css.
-func applyCss(el js.Value, class string) {
-	list := css[class]
-	style := ""
-	for i := range list {
-		style += list[i] + ";"
-	}
-	el.Set("style", style)
-}
-
 // Convert the screen coordinates to the grid row and col.
 func (g grid) getLocation(x, y int) (int, int) {
 	row := y / g.cellHeight
 	col := x / g.cellWidth
 	return row, col
-}
-
-// Create the canvas that will be used as the background.
-// TODO: consider making the strokeStyle border color a setting.
-func createBackGround(width, height, cellWidth, cellHeight int) js.Value {
-	cnv := CreateElement("canvas")
-	cnv.Set("width", width*2)
-	cnv.Set("height", height*2)
-	ctx := cnv.Call("getContext", "2d")
-	ctx.Set("fillStyle", "white")
-	ctx.Call("fillRect", 0, 0, width*2, height*2)
-	ctx.Set("lineWidth", 0.25)
-	ctx.Call("beginPath")
-	rows := height*2/cellHeight + 1
-	cols := width*2/cellWidth + 1
-	for i := 0; i < cols; i++ {
-		ctx.Call("moveTo", i*cellWidth, 0)
-		ctx.Call("lineTo", i*cellWidth, height*2)
-	}
-	for i := 0; i < rows; i++ {
-		ctx.Call("moveTo", 0, i*cellHeight)
-		ctx.Call("lineTo", width*2, i*cellHeight)
-	}
-	ctx.Call("stroke")
-	return cnv
-}
-
-// Draw an individual grid cell. If there is a container allow it to set
-// the cell and font styles.
-// TODO: Consider making the fgColor and fontColor fields of the grid
-// struct so that there can be a single call to the container.SetCellStyles
-// that sets both for the grid.
-func (c *Cell) draw() {
-	// Set default cell styles.
-	c.Grid.ctx.Set("font", "15px arial")
-	fgColor := "white"
-	c.Grid.ctx.Set("fillStyle", fgColor)
-
-	// Notify the container that the cell is being drawn so any custom 
-	// cell styles can be applied to the canvas ctx.
-	if c.Grid.container != nil {
-		c.Grid.container.SetCellStyles(c.Row, c.Col)
-	}
-	fgColor = c.Grid.ctx.Get("fillStyle").String()
-
-	// If the background is white no need to fill the rect.
-	if fgColor != "#ffffff" {
-		c.Grid.ctx.Call("fillRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
-
-		// TODO: the default grid borders are lightgray consider making a setting and apply
-		// the strokeStyle setting at the createBackGround call.
-		c.Grid.ctx.Set("strokeStyle", "lightgray")
-		c.Grid.ctx.Call("strokeRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
-	}
-	str := c.Value
-	if c != c.Grid.editCell {
-		for width := c.Grid.cellWidth + 1; width > c.Grid.cellWidth; {
-			tm := c.Grid.ctx.Call("measureText", str)
-			width = tm.Get("width").Int()
-			if width > c.Grid.cellWidth {
-				str = str[:len(str)-1]
-			}
-		}
-	}
-	fontColor := "black"
-	c.Grid.ctx.Set("fillStyle", fontColor)
-
-	// Notify the container that the cell is being drawn so any custom 
-	// font styles can be applied to the canvas ctx.
-	if c.Grid.container != nil {
-		c.Grid.container.SetCellFontStyles(c.Row, c.Col)
-	}
-	c.Grid.ctx.Call("fillText", str, c.X-c.Grid.x, c.Y-c.Grid.y+15)
 }
 
 // Draw the grid foreground objects.
@@ -311,22 +169,6 @@ func (g grid) draw() {
 	g.ctx.Call("restore")
 }
 
-// Helper for creating dom elements.
-func CreateElement(typ string) js.Value {
-	doc := js.Global().Get("document")
-	return doc.Call("createElement", typ)
-}
-
-// Create the view-port canvas to draw the foreground of the grid.
-func createView(width, height int, main js.Value) (js.Value, js.Value) {
-	cnv := CreateElement("canvas")
-	ctx := cnv.Call("getContext", "2d")
-	cnv.Set("width", width)
-	cnv.Set("height", height)
-	main.Call("appendChild", cnv)
-	return ctx, cnv
-}
-
 // Move the grid's viewport.
 func (g *grid) move(dx, dy int) bool {
 	// Attempting to move outside left and top boundaries.
@@ -372,42 +214,6 @@ func (g *grid) move(dx, dy int) bool {
 	return true
 }
 
-// Create a new grid object from json.
-// Note that if the width and height are not divisible by the
-// cellWidth and cellHeight they will be adjusted.
-func NewGridObj(obj js.Value) GridObj {
-	g := GridObj{}
-	g.id = obj.Get("id").String()
-	g.class = obj.Get("class").String()
-	g.width = obj.Get("width").Int()
-	g.height = obj.Get("height").Int()
-	g.cellWidth = obj.Get("cellWidth").Int()
-	g.cellHeight = obj.Get("cellHeight").Int()
-
-	// Normalize grid width and height to cell width and height.
-	// This makes the math for the background recycle simpler.
-	g.width = g.width / g.cellWidth * g.cellWidth
-	g.height = g.height / g.cellHeight * g.cellHeight
-
-	g.speed = obj.Get("scroll-speed").Int()
-	return g
-}
-
-// Helper for getting bounding client rect.
-func getBounds(cnv js.Value) (int, int) {
-	bounds := cnv.Call("getBoundingClientRect")
-	x := bounds.Get("left").Int()
-	y := bounds.Get("top").Int()
-	return x, y
-}
-
-// Helper for getting window scroll values.
-func getScrollCoords() (int, int) {
-	x := js.Global().Get("window").Get("scrollX").Int()
-	y := js.Global().Get("window").Get("scrollY").Int()
-	return x, y
-}
-
 // Convert screen coordinates to an Address.
 func (g *grid) getAddress(x, y int) (Address, int, int) {
 	var a Address
@@ -444,21 +250,6 @@ func (g *grid) selectCell(x, y int) *Cell {
 	return &s
 }
 
-// TODO: Css selector rules can be applied to the class string
-// to map styles to elements.
-func SetCssMap(this js.Value, inputs []js.Value) interface{} {
-	for _, obj := range inputs {
-		class := obj.Get("class").String()
-		styles := obj.Get("styles")
-		s := []string{}
-		for i := 0; i < styles.Length(); i++ {
-			s = append(s, styles.Index(i).String())
-		}
-		css[class] = s
-	}
-	return nil
-}
-
 // Convert row and col values to screen coordinates.
 func (g *grid) addressToCoords(row, col int) (int, int) {
 	x := col * g.cellWidth
@@ -485,50 +276,17 @@ func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
 	return &c
 }
 
-// External JavaScript function to add data to a grid.
-// args: "grid id", row, col.
-func AddData(this js.Value, args[]js.Value) interface{} {
-	id := args[0].String()
-	row := args[1].Int()
-	col := args[2].Int()
-	value := args[3].String()
-	g := grids[id]
-	g.addData(row, col, value)
-	g.Draw()
-	return nil
-}
-
 func NewGrid(obj GridObj) Grid {
 	// Create a div to add the grid to.
 	main := CreateElement("div")
 	ctx, vcnv := createView(obj.width, obj.height, main)
 	applyCss(vcnv, obj.class)
+
 	cnv := createBackGround(obj.width, obj.height, obj.cellWidth, obj.cellHeight)
-	g := grid{obj.class,
-	0,
-	0,
-	0,
-	0,
-	obj.width,
-	obj.height,
-	vcnv,
-	cnv,
-	ctx,
-	main,
-	map[Address]*Cell{},
-	map[Address]*Cell{},
-	obj.cellWidth,
-	obj.cellHeight,
-	-1,
-	js.Value{},
-	obj.speed,
-	nil,
-	false,
-	false,
-	false,
-	0,
-	0,
-	nil}
+
+	g := grid{obj.class, 0, 0, 0, 0, obj.width, obj.height, vcnv, cnv, ctx,
+	main, map[Address]*Cell{}, map[Address]*Cell{}, obj.cellWidth, obj.cellHeight,
+	-1, js.Value{}, obj.speed, nil, false, false, false, 0, 0, nil}
 
 	grids[obj.id] = &g
 
@@ -569,7 +327,6 @@ func NewGrid(obj GridObj) Grid {
 		}
 		return nil
 	})
-
 
 	// Handle clicks on grid's view canvas area.
 	mouseDownCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -781,13 +538,4 @@ func NewGrid(obj GridObj) Grid {
 	js.Global().Get("document").Call("addEventListener", "keyup", keyUpCb)
 
 	return &g
-}
-
-// External JavaScript function to create a new grid.
-// args: JSON object(GridObj).
-func NewGridJs(this js.Value, args[]js.Value) interface{} {
-	obj := NewGridObj(args[0])
-	g := NewGrid(obj)
-	g.Draw()
-	return g.GetElement()
 }
