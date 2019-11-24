@@ -27,17 +27,46 @@ var grids = map[string]*grid{}
 func ApplyCss(el *js.Value, class string) {
 	list := css[class]
 	style := ""
+	s := el.Get("style")
+	for i := 0; i < s.Length(); i++ {
+		style += s.Index(i).String() + ": " + s.Get(s.Index(i).String()).String() + "; "
+	}
+
 	for i := range list {
 		style += list[i] + ";"
 	}
 	el.Set("style", style)
 }
 
-func AddCssStyle(class, style string) {
+func GetCssStyle(el *js.Value, style string) string {
+	s := el.Get("style")
+	for i := 0; i < s.Length(); i++ {
+		if s.Index(i).String() == style {
+			return s.Get(s.Index(i).String()).String()
+		}
+	}
+	return ""
+}
+
+func ChangeCssStyle(el *js.Value, style string, value string) {
+	styleList := ""
+	s := el.Get("style")
+	for i := 0; i < s.Length(); i++ {
+		if s.Index(i).String() == style {
+			styleList += s.Index(i).String() + ": " + value + "; "
+		} else {
+			styleList += s.Index(i).String() + ": " + s.Get(s.Index(i).String()).String() + "; "
+		}
+	}
+	el.Set("style", styleList)
+}
+
+func AddCssStyles(class string, styles []string) {
 	if s, ok := css[class]; !ok {
-		css[class] = []string{style}
+		css[class] = styles
 	} else {
-		s = append(s, style)
+		s = append(s, styles...)
+		css[class] = s
 	}
 }
 
