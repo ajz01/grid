@@ -20,4 +20,4 @@ The grid currently supports scrolling and has some basic scroll controls added t
 
 The features are still very limited as this is a new project, but it seems there is a lot of potential for building fully encapsulated 'web component' style controls using wasm and go makes it easy to build.
 
-![Sample Image](/grid.png)
+![Sample Image](/images/grid.png)
