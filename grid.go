@@ -280,7 +280,7 @@ func NewGrid(obj GridObj) Grid {
 	// Create a div to add the grid to.
 	main := CreateElement("div")
 	ctx, vcnv := createView(obj.width, obj.height, main)
-	applyCss(vcnv, obj.class)
+	ApplyCss(&vcnv, obj.class)
 
 	cnv := createBackGround(obj.width, obj.height, obj.cellWidth, obj.cellHeight)
 

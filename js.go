@@ -24,13 +24,21 @@ var css = map[string][]string{}
 var grids = map[string]*grid{}
 
 // Apply the css styles stored in css.
-func applyCss(el js.Value, class string) {
+func ApplyCss(el *js.Value, class string) {
 	list := css[class]
 	style := ""
 	for i := range list {
 		style += list[i] + ";"
 	}
 	el.Set("style", style)
+}
+
+func AddCssStyle(class, style string) {
+	if s, ok := css[class]; !ok {
+		css[class] = []string{style}
+	} else {
+		s = append(s, style)
+	}
 }
 
 // TODO: Css selector rules can be applied to the class string
