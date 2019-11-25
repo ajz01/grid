@@ -22,14 +22,14 @@ type grid struct {
 	width, height  int
 	vcnv, cnv, ctx js.Value
 	main           js.Value
-	selectedCells  map[Address]*Cell
-	data           map[Address]*Cell
+	selectedCells  map[Address]*cell
+	data           map[Address]*cell
 	cellWidth      int
 	cellHeight     int
 	direction      direction // scroll direction
 	interval       js.Value // scroll timer interval
 	speed          int // scroll speed.
-	editCell       *Cell
+	editCell       *cell
 	scrolling      bool
 	active         bool
 	mouseDown      bool
@@ -161,7 +161,7 @@ func (g grid) draw() {
 		g.ctx.Set("shadowColor", shadowColor)
 		g.ctx.Set("strokeStyle", borderColor)
 		g.ctx.Set("shadowBlur", 2)
-		g.ctx.Call("strokeRect", s.X-g.x+2, s.Y-g.y+2, g.cellWidth-2, g.cellHeight-2)
+		g.ctx.Call("strokeRect", s.x-g.x+2, s.y-g.y+2, g.cellWidth-2, g.cellHeight-2)
 	}
 	g.ctx.Call("restore")
 
@@ -247,7 +247,7 @@ func (g *grid) getAddress(x, y int) (Address, int, int) {
 }
 
 // Select a grid cell by screen coordinates.
-func (g *grid) selectCell(x, y int) *Cell {
+func (g *grid) selectCell(x, y int) *cell {
 	a, sx, sy := g.getAddress(x, y)
 	if s, ok := g.data[a]; ok {
 		g.selectedCells[a] = s
@@ -256,7 +256,7 @@ func (g *grid) selectCell(x, y int) *Cell {
 	if s, ok := g.selectedCells[a]; ok {
 		return s
 	}
-	s := Cell{sx, sy, a.Row, a.Col, "", false, g}
+	s := cell{sx, sy, a.Row, a.Col, "", false, g}
 	g.selectedCells[a] = &s
 	return &s
 }
@@ -270,7 +270,7 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 }
 
 // Add a value to the cell at the Address of row and col of the grid.
-func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
+func (g *grid) addData(row, col int, value string) *cell {
 	if c, ok := g.data[Address{row, col}]; ok {
 		c.value = value
 		if g.container != nil {
@@ -279,7 +279,7 @@ func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
 		return c
 	}
 	x, y := g.addressToCoords(row, col)
-	c := Cell{x, y, row, col, value, false, g}
+	c := cell{x, y, row, col, value, false, g}
 	g.data[Address{row, col}] = &c
 	if g.container != nil {
 		g.container.AddCell(&c)
@@ -296,7 +296,7 @@ func NewGrid(obj GridObj) Grid {
 	cnv := createBackGround(obj.width, obj.height, obj.cellWidth, obj.cellHeight)
 
 	g := grid{obj.class, 0, 0, 0, 0, obj.width, obj.height, vcnv, cnv, ctx,
-	main, map[Address]*Cell{}, map[Address]*Cell{}, obj.cellWidth, obj.cellHeight,
+	main, map[Address]*cell{}, map[Address]*cell{}, obj.cellWidth, obj.cellHeight,
 	-1, js.Value{}, obj.speed, nil, false, false, false, 0, 0, nil}
 
 	grids[obj.id] = &g
@@ -383,7 +383,7 @@ func NewGrid(obj GridObj) Grid {
 		}
 
 		// Remove all selections.
-		g.selectedCells = map[Address]*Cell{}
+		g.selectedCells = map[Address]*cell{}
 		g.editCell = nil
 		g.selectCell(x, y)
 		g.mouseDown = true
