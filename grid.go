@@ -154,7 +154,7 @@ func (g grid) draw() {
 		s := g.selectedCells[i]
 		shadowColor := "blue"
 		borderColor := "lightblue"
-		if s.Editing {
+		if s.editing {
 			shadowColor = "green"
 			borderColor = "lightgreen"
 		}
@@ -406,9 +406,9 @@ func NewGrid(obj GridObj) Grid {
 		x := e.Get("pageX").Int()
 		y := e.Get("pageY").Int()
 		c := g.selectCell(x, y)
-		c.Editing = true
+		c.editing = true
 		if g.editCell != nil {
-			g.editCell.Editing = false
+			g.editCell.editing = false
 		}
 		g.editCell = c
 		g.Draw()
@@ -458,7 +458,7 @@ func NewGrid(obj GridObj) Grid {
 			if c == "Tab" {
 				delete(g.selectedCells, Address{ec.row, ec.col})
 				g.AddData(ec.row, ec.col, ec.value)
-				ec.Editing = false
+				ec.editing = false
 				g.editCell = nil
 				editing = false
 			} else if c == "Backspace" {
@@ -466,7 +466,7 @@ func NewGrid(obj GridObj) Grid {
 					g.editCell.value = g.editCell.value[:len(g.editCell.value)-1]
 				}
 			} else if len(c) == 1 {
-				if g.editCell.Editing {
+				if g.editCell.editing {
 					// If not editing then this is the first
 					// letter. Clear the existing cell contents.
 					if !editing {
@@ -476,7 +476,7 @@ func NewGrid(obj GridObj) Grid {
 					g.editCell.value += c
 				} else {
 					g.editCell.value = c
-					g.editCell.Editing = true
+					g.editCell.editing = true
 				}
 			}
 		}
