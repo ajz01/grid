@@ -4,6 +4,17 @@ import (
 	"syscall/js"
 )
 
+// grid scroll directions.
+type direction int
+
+const (
+	none direction = -1
+	right direction = iota
+	left
+	down
+	up
+)
+
 // The main grid type.
 type grid struct {
 	class          string
@@ -15,8 +26,8 @@ type grid struct {
 	data           map[Address]*Cell
 	cellWidth      int
 	cellHeight     int
-	direction      int
-	interval       js.Value
+	direction      direction // scroll direction
+	interval       js.Value // scroll timer interval
 	speed          int // scroll speed.
 	editCell       *Cell
 	scrolling      bool
@@ -90,7 +101,7 @@ func (g grid) GetEditCellAddress() *Address {
 	if g.editCell == nil {
 		return nil
 	}
-	return &Address{g.editCell.Row, g.editCell.Col}
+	return &Address{g.editCell.row, g.editCell.col}
 }
 
 func (g *grid) AddContainer(container Container) {
@@ -175,7 +186,7 @@ func (g *grid) move(dx, dy int) bool {
 	if dx < 0 && g.x+dx < 0 {
 		g.x = 0
 		g.sx = 0
-		g.direction = -1
+		g.direction = none
 		g.scrolling = false
 		js.Global().Call("clearInterval", g.interval)
 		return false
@@ -183,7 +194,7 @@ func (g *grid) move(dx, dy int) bool {
 	if dy < 0 && g.y+dy < 0 {
 		g.y = 0
 		g.sy = 0
-		g.direction = -1
+		g.direction = none
 		g.scrolling = false
 		js.Global().Call("clearInterval", g.interval)
 		return false
@@ -196,17 +207,17 @@ func (g *grid) move(dx, dy int) bool {
 	g.sy += dy
 
 	// Recycle background canvas offsets.
-	if g.direction < 2 && g.x%g.width == 0 {
-		if g.direction == 0 {
+	if g.direction < down && g.x%g.width == 0 {
+		if g.direction == right {
 			g.sx = 0
-		} else if g.direction == 1 {
+		} else if g.direction == left {
 			g.sx = g.width
 		}
 	}
-	if g.direction > 1 && g.y%g.height == 0 {
-		if g.direction == 2 {
+	if g.direction > left && g.y%g.height == 0 {
+		if g.direction == down {
 			g.sy = 0
-		} else if g.direction == 3 {
+		} else if g.direction == up {
 			g.sy = g.height
 		}
 	}
@@ -245,7 +256,7 @@ func (g *grid) selectCell(x, y int) *Cell {
 	if s, ok := g.selectedCells[a]; ok {
 		return s
 	}
-	s := Cell{sx, sy, a.Row, a.Col, "", false, g}//, nil}
+	s := Cell{sx, sy, a.Row, a.Col, "", false, g}
 	g.selectedCells[a] = &s
 	return &s
 }
@@ -261,7 +272,7 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 // Add a value to the cell at the Address of row and col of the grid.
 func (g *grid) addData(row, col int, value string) *Cell { //, cl *xlsx.Cell) {
 	if c, ok := g.data[Address{row, col}]; ok {
-		c.Value = value
+		c.value = value
 		if g.container != nil {
 			g.container.AddCell(c)
 		}
@@ -293,13 +304,13 @@ func NewGrid(obj GridObj) Grid {
 	// Interval callback to handle continued scrolling while mouse button is down.
 	moveCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		switch g.direction {
-		case 0:
+		case right:
 			g.move(5, 0)
-		case 1:
+		case left:
 			g.move(-5, 0)
-		case 2:
+		case down:
 			g.move(0, 5)
-		case 3:
+		case up:
 			g.move(0, -5)
 		}
 		g.scrollAmt--
@@ -310,13 +321,13 @@ func NewGrid(obj GridObj) Grid {
 	// Interval callback to handle continued scrolling from scroll event.
 	moveAmtCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		switch g.direction {
-		case 0:
+		case right:
 			g.move(5, 0)
-		case 1:
+		case left:
 			g.move(-5, 0)
-		case 2:
+		case down:
 			g.move(0, 5)
-		case 3:
+		case up:
 			g.move(0, -5)
 		}
 		g.Draw()
@@ -340,7 +351,7 @@ func NewGrid(obj GridObj) Grid {
 		if x-bx-wx > g.width-g.cellWidth && x-bx-wx < g.width &&
 		y-by-wy > g.height-g.cellHeight && y-by-wy < g.height {
 			if g.move(5, 0) {
-				g.direction = 0
+				g.direction = right
 				g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 			}
 			return nil
@@ -348,7 +359,7 @@ func NewGrid(obj GridObj) Grid {
 		if x-bx-wx > 0 && x-bx-wx < g.cellWidth &&
 		y-by-wy > g.height-g.cellHeight && y-by-wy < g.height {
 			if g.move(-5, 0) {
-				g.direction = 1
+				g.direction = left
 				g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 			}
 			return nil
@@ -357,7 +368,7 @@ func NewGrid(obj GridObj) Grid {
 		if x-bx-wx > g.width-g.cellWidth && x-bx-wx < g.width &&
 		y-by-wy > g.height-g.cellHeight*2 && y-by-wy < g.height-g.cellHeight {
 			if g.move(0, 5) {
-				g.direction = 2
+				g.direction = down
 				g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 			}
 			return nil
@@ -365,7 +376,7 @@ func NewGrid(obj GridObj) Grid {
 		if x-bx-wx > g.width-g.cellWidth && x-bx-wx < g.width &&
 		y-by-wy > 0 && y-by-wy < g.cellHeight {
 			if g.move(0, -5) {
-				g.direction = 3
+				g.direction = up
 				g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 			}
 			return nil
@@ -384,7 +395,7 @@ func NewGrid(obj GridObj) Grid {
 	// from down to up or when mouse leaves canvas area.
 	mouseUpCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		js.Global().Call("clearInterval", g.interval)
-		g.direction = -1
+		g.direction = none
 		g.mouseDown = false
 		return nil
 	})
@@ -405,6 +416,7 @@ func NewGrid(obj GridObj) Grid {
 	})
 
 	// Handle keyboard input. Used for cell editing.
+	editing := false
 	keyDownCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		e := args[0]
 		c := e.Get("key").String()
@@ -413,28 +425,28 @@ func NewGrid(obj GridObj) Grid {
 			case "ArrowRight":
 				if g.move(5, 0) {
 					g.scrolling = true
-					g.direction = 0
+					g.direction = right
 					g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 				}
 				return nil
 			case "ArrowLeft":
 				if g.move(-5, 0) {
 					g.scrolling = true
-					g.direction = 1
+					g.direction = left
 					g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 				}
 				return nil
 			case "ArrowDown":
 				if g.move(0, 5) {
 					g.scrolling = true
-					g.direction = 2
+					g.direction = down
 					g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 				}
 				return nil
 			case "ArrowUp":
 				if g.move(0, -5) {
 					g.scrolling = true
-					g.direction = 3
+					g.direction = up
 					g.interval = js.Global().Call("setInterval", moveCb, g.speed)
 				}
 				return nil
@@ -444,19 +456,26 @@ func NewGrid(obj GridObj) Grid {
 			e.Call("preventDefault")
 			ec := g.editCell
 			if c == "Tab" {
-				delete(g.selectedCells, Address{ec.Row, ec.Col})
-				g.AddData(ec.Row, ec.Col, ec.Value)
+				delete(g.selectedCells, Address{ec.row, ec.col})
+				g.AddData(ec.row, ec.col, ec.value)
 				ec.Editing = false
 				g.editCell = nil
+				editing = false
 			} else if c == "Backspace" {
-				if len(g.editCell.Value) > 0 {
-					g.editCell.Value = g.editCell.Value[:len(g.editCell.Value)-1]
+				if len(g.editCell.value) > 0 {
+					g.editCell.value = g.editCell.value[:len(g.editCell.value)-1]
 				}
 			} else if len(c) == 1 {
 				if g.editCell.Editing {
-					g.editCell.Value += c
+					// If not editing then this is the first
+					// letter. Clear the existing cell contents.
+					if !editing {
+						g.editCell.value = ""
+					}
+					editing = true
+					g.editCell.value += c
 				} else {
-					g.editCell.Value = c
+					g.editCell.value = c
 					g.editCell.Editing = true
 				}
 			}
@@ -481,7 +500,7 @@ func NewGrid(obj GridObj) Grid {
 
 	mouseLeaveCb := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		js.Global().Call("clearInterval", g.interval)
-		g.direction = -1
+		g.direction = none
 		g.scrolling = false
 		g.active = false
 		return nil
@@ -513,9 +532,9 @@ func NewGrid(obj GridObj) Grid {
 				g.scrollAmt = 50
 				scroll := 5
 				if body.Get("scrollTop").Int() > g.lastScroll || el.Get("scrollTop").Int() > g.lastScroll {
-					g.direction = 2
+					g.direction = down
 				} else {
-					g.direction = 3
+					g.direction = up
 					scroll = -5
 				}
 				if g.move(0, scroll) {

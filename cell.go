@@ -4,9 +4,9 @@ package grid
 type Cell struct {
 	X           int
 	Y           int
-	Row         int
-	Col         int
-	Value       string
+	row         int
+	col         int
+	value       string
 	Editing     bool
 	Grid	*grid
 }
@@ -25,19 +25,19 @@ type CellContent interface {
 }
 
 func (c Cell) GetRow() int {
-	return c.Row
+	return c.row
 }
 
 func (c Cell) GetCol() int {
-	return c.Col
+	return c.col
 }
 
 func (c Cell) GetValue() string {
-	return c.Value
+	return c.value
 }
 
 func (c *Cell) SetValue(v string) {
-	c.Value = v
+	c.value = v
 }
 
 // Draw an individual grid cell. If there is a container allow it to set
@@ -54,7 +54,7 @@ func (c *Cell) draw() {
 	// Notify the container that the cell is being drawn so any custom 
 	// cell styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
-		c.Grid.container.SetCellStyles(c.Row, c.Col)
+		c.Grid.container.SetCellStyles(c.row, c.col)
 	}
 	fgColor = c.Grid.ctx.Get("fillStyle").String()
 
@@ -67,7 +67,7 @@ func (c *Cell) draw() {
 		c.Grid.ctx.Set("strokeStyle", "lightgray")
 		c.Grid.ctx.Call("strokeRect", c.X-c.Grid.x, c.Y-c.Grid.y, c.Grid.cellWidth, c.Grid.cellHeight)
 	}
-	str := c.Value
+	str := c.value
 	if c != c.Grid.editCell {
 		for width := c.Grid.cellWidth + 1; width > c.Grid.cellWidth; {
 			tm := c.Grid.ctx.Call("measureText", str)
@@ -83,7 +83,7 @@ func (c *Cell) draw() {
 	// Notify the container that the cell is being drawn so any custom 
 	// font styles can be applied to the canvas ctx.
 	if c.Grid.container != nil {
-		c.Grid.container.SetCellFontStyles(c.Row, c.Col)
+		c.Grid.container.SetCellFontStyles(c.row, c.col)
 	}
 	c.Grid.ctx.Call("fillText", str, c.X-c.Grid.x, c.Y-c.Grid.y+15)
 }
