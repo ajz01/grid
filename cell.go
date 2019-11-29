@@ -24,15 +24,15 @@ type CellContent interface {
 	SetValue(v string)
 }
 
-func (c cell) GetRow() int {
+func (c *cell) GetRow() int {
 	return c.row
 }
 
-func (c cell) GetCol() int {
+func (c *cell) GetCol() int {
 	return c.col
 }
 
-func (c cell) GetValue() string {
+func (c *cell) GetValue() string {
 	return c.value
 }
 

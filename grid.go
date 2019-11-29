@@ -49,7 +49,7 @@ type Grid interface {
 	GetY() int
 	GetEditCellAddress() *Address
 	AddContainer(container Container)
-	GetElement() js.Value
+	GetElement() *js.Value
 	AddData(row, col int, value string)
 	GetContainer() Container
 }
@@ -77,27 +77,27 @@ func (g *grid) AddEventHandler(event string, handler func(this js.Value, args []
 	g.vcnv.Call("addEventListener", event, js.FuncOf(handler))
 }
 
-func (g grid) GetCtx() *js.Value {
+func (g *grid) GetCtx() *js.Value {
 	return &g.ctx
 }
 
-func (g grid) GetCellWidth() int {
+func (g *grid) GetCellWidth() int {
 	return g.cellWidth
 }
 
-func (g grid) GetCellHeight() int {
+func (g *grid) GetCellHeight() int {
 	return g.cellHeight
 }
 
-func (g grid) GetX() int {
+func (g *grid) GetX() int {
 	return g.x
 }
 
-func (g grid) GetY() int {
+func (g *grid) GetY() int {
 	return g.y
 }
 
-func (g grid) GetEditCellAddress() *Address {
+func (g *grid) GetEditCellAddress() *Address {
 	if g.editCell == nil {
 		return nil
 	}
@@ -108,23 +108,23 @@ func (g *grid) AddContainer(container Container) {
 	g.container = container
 }
 
-func (g grid) GetContainer() Container {
+func (g *grid) GetContainer() Container {
 	return g.container
 }
 
-func (g grid) GetElement() js.Value {
-	return g.main
+func (g *grid) GetElement() *js.Value {
+	return &g.main
 }
 
 // Convert the screen coordinates to the grid row and col.
-func (g grid) getLocation(x, y int) (int, int) {
+func (g *grid) getLocation(x, y int) (int, int) {
 	row := y / g.cellHeight
 	col := x / g.cellWidth
 	return row, col
 }
 
 // Draw the grid foreground objects.
-func (g grid) draw() {
+func (g *grid) draw() {
 	w := g.width
 	h := g.height
 
