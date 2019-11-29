@@ -1,3 +1,12 @@
+// Package grid provides the implementation of a wasm based grid control.
+// The control can be created and modified from JavaScript code by using
+// the public API methods defined in the js.go file. The grid package will
+// handle the basic requirements for the grid such as drawing and event
+// handling. To add additional drawing or event handling features a Container
+// interface is provided. The Container interface provides "hooks" into the
+// drawing methods of the grid to allow any implementing type an oppurtunity
+// to add additional layers to the basic drawing method. An implementation of
+// Container can also add additional JavaScript event handlers to the grid.
 package grid
 
 import (
