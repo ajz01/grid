@@ -61,6 +61,8 @@ type Grid interface {
 	GetElement() *js.Value
 	AddData(row, col int, value string)
 	GetContainer() Container
+	SelectCells([]Address)
+	UnSelectCells()
 }
 
 // The Container interface provides the methods for the grid.container.
@@ -69,6 +71,7 @@ type Grid interface {
 // cell styles.
 type Container interface {
 	AddCell(cell CellContent)
+	AddCellsDone()
 	SetCellStyles(row, col int)
 	SetCellFontStyles(row, col int)
 	GetGrid() Grid
@@ -80,6 +83,18 @@ func (g *grid) Draw() {
 
 func (g *grid) AddData(row, col int, value string) {
 	g.addData(row, col, value)
+}
+
+func (g *grid) SelectCells(addresses []Address) {
+	for _, a := range addresses {
+		x, y := g.addressToCoords(a.Row, a.Col)
+		g.selectCellAddress(a, x, y)
+	}
+	g.draw()
+}
+
+func (g *grid) UnSelectCells() {
+	g.selectedCells = map[Address]*cell{}
 }
 
 func (g *grid) AddEventHandler(event string, handler func(this js.Value, args []js.Value) interface{}) {
@@ -255,9 +270,7 @@ func (g *grid) getAddress(x, y int) (Address, int, int) {
 	return a, sx, sy
 }
 
-// Select a grid cell by screen coordinates.
-func (g *grid) selectCell(x, y int) *cell {
-	a, sx, sy := g.getAddress(x, y)
+func (g *grid) selectCellAddress(a Address, sx, sy int) *cell {
 	if s, ok := g.data[a]; ok {
 		g.selectedCells[a] = s
 		return s
@@ -268,6 +281,12 @@ func (g *grid) selectCell(x, y int) *cell {
 	s := cell{sx, sy, a.Row, a.Col, "", false, g}
 	g.selectedCells[a] = &s
 	return &s
+}
+
+// Select a grid cell by screen coordinates.
+func (g *grid) selectCell(x, y int) *cell {
+	a, sx, sy := g.getAddress(x, y)
+	return g.selectCellAddress(a, sx, sy)
 }
 
 // Convert row and col values to screen coordinates.
@@ -467,6 +486,9 @@ func NewGrid(obj GridObj) Grid {
 			if c == "Tab" {
 				delete(g.selectedCells, Address{ec.row, ec.col})
 				g.AddData(ec.row, ec.col, ec.value)
+				if g.container != nil {
+					g.container.AddCellsDone()
+				}
 				ec.editing = false
 				g.editCell = nil
 				editing = false
