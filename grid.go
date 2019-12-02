@@ -62,7 +62,7 @@ type Grid interface {
 	AddData(row, col int, value string)
 	GetContainer() Container
 	SelectCells([]Address)
-	UnSelectCells()
+	ClearSelection()
 }
 
 // The Container interface provides the methods for the grid.container.
@@ -93,7 +93,7 @@ func (g *grid) SelectCells(addresses []Address) {
 	g.draw()
 }
 
-func (g *grid) UnSelectCells() {
+func (g *grid) ClearSelection() {
 	g.selectedCells = map[Address]*cell{}
 }
 
