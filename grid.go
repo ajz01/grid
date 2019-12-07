@@ -367,21 +367,21 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 
 // Add a value to the cell at the Address of row and col of the grid.
 func (g *grid) addData(row, col int, value string) *cell {
+	var a *cell
 	if c, ok := g.data[Address{row, col}]; ok {
 		c.value = value
 		g.data[Address{row, col}] = c
-		if g.container != nil {
-			g.container.AddCell(c)
-		}
-		return c
+		a = c
+	} else {
+		x, y := g.addressToCoords(row, col)
+		c := cell{x, y, row, col, value, false, g}
+		g.data[Address{row, col}] = &c
+		a = &c
 	}
-	x, y := g.addressToCoords(row, col)
-	c := cell{x, y, row, col, value, false, g}
-	g.data[Address{row, col}] = &c
 	if g.container != nil {
-		g.container.AddCell(&c)
+		g.container.AddCell(a)
 	}
-	return &c
+	return a
 }
 
 func NewGrid(obj GridObj) Grid {
