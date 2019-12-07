@@ -63,6 +63,9 @@ type Grid interface {
 	GetContainer() Container
 	SelectCells([]Address)
 	ClearSelection()
+	AddColumn(col, count int)
+	AddRow(row, count int)
+	GetCellContent(row, col int) CellContent
 }
 
 // The Container interface provides the methods for the grid.container.
@@ -75,6 +78,71 @@ type Container interface {
 	SetCellStyles(row, col int)
 	SetCellFontStyles(row, col int)
 	GetGrid() Grid
+}
+
+func (g *grid) GetCellContent(row, col int) CellContent {
+	a := Address{row, col}
+	if _, ok := g.data[a]; !ok {
+		return g.addData(row, col, "")
+	}
+	return g.data[a]
+}
+
+func (g *grid) AddColumn(col, count int) {
+	columns := []*cell{}
+	selectedColumns := []*cell{}
+	for k, v := range g.data {
+		if v.col >= col {
+			v.col+=count
+			v.x = v.col * g.cellWidth
+			if _, ok := g.selectedCells[k]; ok {
+				delete(g.selectedCells, k)
+				selectedColumns = append(selectedColumns, v)
+			}
+			delete(g.data, k)
+			columns = append(columns, v)
+		}
+	}
+	for _, c := range columns {
+		g.data[Address{c.row, c.col}] = c
+	}
+	for _, c := range selectedColumns {
+		g.selectedCells[Address{c.row, c.col}] = c
+	}
+	columns = []*cell{}
+	for k, v := range g.selectedCells {
+		if _, ok := g.data[k]; ok {
+			continue
+		}
+		if v.col >= col {
+			v.col+=count
+			v.x = v.col * g.cellWidth
+			delete(g.selectedCells, k)
+			columns = append(columns, v)
+		}
+	}
+	for _, c := range columns {
+		g.selectedCells[Address{c.row, c.col}] = c
+	}
+}
+
+func (g *grid) AddRow(row, count int) {
+	for k, v := range g.data {
+		if v.row >= row - 1 {
+			v.row+=count
+			v.y = v.row * g.cellHeight
+			delete(g.data, k)
+			g.data[Address{v.row, v.col}] = v
+		}
+	}
+	for k, v := range g.selectedCells {
+		if v.row >= row - 1 {
+			v.row+=count
+			v.y = v.row * g.cellHeight
+			delete(g.data, k)
+			g.data[Address{v.row, v.col}] = v
+		}
+	}
 }
 
 func (g *grid) Draw() {
@@ -301,6 +369,7 @@ func (g *grid) addressToCoords(row, col int) (int, int) {
 func (g *grid) addData(row, col int, value string) *cell {
 	if c, ok := g.data[Address{row, col}]; ok {
 		c.value = value
+		g.data[Address{row, col}] = c
 		if g.container != nil {
 			g.container.AddCell(c)
 		}
